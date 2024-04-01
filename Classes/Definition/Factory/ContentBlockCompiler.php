@@ -29,7 +29,9 @@ use TYPO3\CMS\ContentBlocks\Definition\PaletteDefinition;
 use TYPO3\CMS\ContentBlocks\Definition\TCA\LinebreakDefinition;
 use TYPO3\CMS\ContentBlocks\Definition\TCA\TabDefinition;
 use TYPO3\CMS\ContentBlocks\Definition\TcaFieldDefinition;
-use TYPO3\CMS\ContentBlocks\FieldConfiguration\FieldType;
+use TYPO3\CMS\ContentBlocks\FieldType\FieldType;
+use TYPO3\CMS\ContentBlocks\FieldType\FieldTypeInterface;
+use TYPO3\CMS\ContentBlocks\FieldType\FieldTypeRegistry;
 use TYPO3\CMS\ContentBlocks\Loader\LoadedContentBlock;
 use TYPO3\CMS\ContentBlocks\Registry\AutomaticLanguageKeysRegistry;
 use TYPO3\CMS\ContentBlocks\Registry\AutomaticLanguageSource;
@@ -72,6 +74,7 @@ final class ContentBlockCompiler
 {
     private AutomaticLanguageKeysRegistry $automaticLanguageKeysRegistry;
     private SimpleTcaSchemaFactory $simpleTcaSchemaFactory;
+    private FieldTypeRegistry $fieldTypeRegistry;
 
     /**
      * This property tracks Collection foreign_table parent references.
@@ -87,9 +90,13 @@ final class ContentBlockCompiler
      */
     private array $typeFieldPerTable = [];
 
-    public function compile(ContentBlockRegistry $contentBlockRegistry, SimpleTcaSchemaFactory $simpleTcaSchemaFactory): CompilationResult
-    {
+    public function compile(
+        ContentBlockRegistry $contentBlockRegistry,
+        FieldTypeRegistry $fieldTypeRegistry,
+        SimpleTcaSchemaFactory $simpleTcaSchemaFactory
+    ): CompilationResult {
         $this->simpleTcaSchemaFactory = $simpleTcaSchemaFactory;
+        $this->fieldTypeRegistry = $fieldTypeRegistry;
         $this->automaticLanguageKeysRegistry = new AutomaticLanguageKeysRegistry();
         $tableDefinitionList = [];
         foreach ($contentBlockRegistry->getAll() as $contentBlock) {
@@ -127,13 +134,19 @@ final class ContentBlockCompiler
         $this->typeFieldPerTable = [];
         unset($this->automaticLanguageKeysRegistry);
         unset($this->simpleTcaSchemaFactory);
+        unset($this->fieldTypeRegistry);
     }
 
     private function mergeProcessingResult(array $tableDefinitionList): array
     {
         $mergedResult = [];
         foreach ($tableDefinitionList as $table => $definition) {
-            $mergedResult[$table] = array_replace_recursive(...array_reverse($definition['tableDefinitions']));
+            // We are reversing the table definition list here, so that higher priority
+            // Content Block definitions override lower ones. This is especially
+            // important for the default value of type fields (record type selector).
+            $reversedTableDefinitions = array_reverse($definition['tableDefinitions']);
+            $combinedTableDefinitions = array_replace_recursive(...$reversedTableDefinitions);
+            $mergedResult[$table] = $combinedTableDefinitions;
             $mergedResult[$table]['typeDefinitions'] = $definition['typeDefinitions'];
         }
         return $mergedResult;
@@ -160,16 +173,20 @@ final class ContentBlockCompiler
     {
         foreach ($fields as $field) {
             $this->initializeField($input, $result, $field);
+            $fieldTypeName = $result->fieldType::getName();
+            $fieldTypeEnum = FieldType::tryFrom($fieldTypeName);
             $input->languagePath->addPathSegment($result->identifier);
             $field = $this->initializeFieldLabelAndDescription($input, $result, $field);
-            if ($result->fieldType === FieldType::FLEXFORM) {
+            if ($fieldTypeEnum === FieldType::FLEXFORM) {
                 $field = $this->processFlexForm($input, $field);
             }
-            if ($result->fieldType->hasItems()) {
+            $itemsFieldTypes = ['select', 'radio', 'check'];
+            $tcaFieldType = $result->fieldType::getTcaType();
+            if (in_array($tcaFieldType, $itemsFieldTypes, true)) {
                 $field = $this->collectItemLabels($input, $result, $field);
             }
             $result->tcaFieldDefinition = $this->buildTcaFieldDefinitionArray($input, $result, $field);
-            if ($result->fieldType === FieldType::COLLECTION) {
+            if ($fieldTypeEnum === FieldType::COLLECTION) {
                 $this->processCollection($input, $result, $field);
             }
             $this->collectProcessedField($result);
@@ -206,8 +223,10 @@ final class ContentBlockCompiler
         return $yaml;
     }
 
-    private function initializeContentTypeLabelAndDescription(ProcessingInput $input, ProcessedFieldsResult $result): void
-    {
+    private function initializeContentTypeLabelAndDescription(
+        ProcessingInput $input,
+        ProcessedFieldsResult $result
+    ): void {
         $languagePathTitle = $input->languagePath->getCurrentPath();
         $languagePathDescription = $input->languagePath->getCurrentPath();
         $title = (string)($input->yaml['title'] ?? '');
@@ -233,8 +252,11 @@ final class ContentBlockCompiler
         $result->contentType->languagePathDescription = $languagePathDescription;
     }
 
-    private function initializeFieldLabelAndDescription(ProcessingInput $input, ProcessedFieldsResult $result, array $field): array
-    {
+    private function initializeFieldLabelAndDescription(
+        ProcessingInput $input,
+        ProcessedFieldsResult $result,
+        array $field
+    ): array {
         $labelPath = $this->getFieldLabelPath($input->languagePath);
         $descriptionPath = $this->getFieldDescriptionPath($input->languagePath);
         $title = (string)($field['label'] ?? '');
@@ -252,11 +274,12 @@ final class ContentBlockCompiler
     private function collectItemLabels(ProcessingInput $input, ProcessedFieldsResult $result, array $field): array
     {
         $items = $field['items'] ?? [];
-        $fieldType = $result->fieldType;
+        $fieldTypeName = $result->fieldType::getName();
+        $fieldTypeEnum = FieldType::tryFrom($fieldTypeName);
         foreach ($items as $index => $item) {
             $label = (string)($item['label'] ?? '');
             $currentPath = $input->languagePath->getCurrentPath();
-            if ($fieldType === FieldType::CHECKBOX) {
+            if ($fieldTypeEnum === FieldType::CHECKBOX) {
                 $labelPath = $currentPath . '.items.' . $index . '.label';
             } else {
                 $value = (string)($item['value'] ?? '');
@@ -307,8 +330,11 @@ final class ContentBlockCompiler
         $this->prefixDisplayCondFieldsIfNecessary($result);
     }
 
-    private function prependTypeFieldForRecordType(array $yamlFields, ProcessedFieldsResult $result, bool $isExistingField): array
-    {
+    private function prependTypeFieldForRecordType(
+        array $yamlFields,
+        ProcessedFieldsResult $result,
+        bool $isExistingField
+    ): array {
         if ($isExistingField) {
             $typeFieldDefinition = [
                 'identifier' => $result->tableDefinition->typeField,
@@ -367,8 +393,14 @@ final class ContentBlockCompiler
     private function handleRootField(array $rootField, ProcessingInput $input, ProcessedFieldsResult $result): array
     {
         $rootFieldType = $this->resolveType($input, $rootField);
-        $this->assertNoLinebreakOutsideOfPalette($rootFieldType, $input->contentBlock);
-        $fields = match ($rootFieldType) {
+        $fieldTypeEnum = FieldType::tryFrom($rootFieldType::getName());
+        if ($fieldTypeEnum !== null) {
+            if ($fieldTypeEnum === FieldType::LINEBREAK && ($rootField['ignoreIfNotInPalette'] ?? false)) {
+                return [];
+            }
+            $this->assertNoLinebreakOutsideOfPalette($fieldTypeEnum, $input->contentBlock);
+        }
+        $fields = match ($fieldTypeEnum) {
             Fieldtype::PALETTE => $this->handlePalette($input, $result, $rootField),
             FieldType::TAB => $this->handleTab($input, $result, $rootField),
             default => $this->handleDefault($input, $result, $rootField)
@@ -395,11 +427,24 @@ final class ContentBlockCompiler
         $paletteItems = [];
         foreach ($rootPalette['fields'] as $paletteField) {
             $paletteFieldType = $this->resolveType($input, $paletteField);
-            if ($paletteFieldType === FieldType::LINEBREAK) {
+            $fieldTypeEnum = FieldType::tryFrom($paletteFieldType::getName());
+            if ($fieldTypeEnum === FieldType::LINEBREAK) {
                 $paletteItems[] = new LinebreakDefinition();
             } else {
-                $this->assertNoPaletteInPalette($paletteFieldType, $paletteField['identifier'], $rootPaletteIdentifier, $input->contentBlock);
-                $this->assertNoTabInPalette($paletteFieldType, $paletteField['identifier'], $rootPaletteIdentifier, $input->contentBlock);
+                if ($fieldTypeEnum !== null) {
+                    $this->assertNoPaletteInPalette(
+                        $fieldTypeEnum,
+                        $paletteField['identifier'],
+                        $rootPaletteIdentifier,
+                        $input->contentBlock
+                    );
+                    $this->assertNoTabInPalette(
+                        $fieldTypeEnum,
+                        $paletteField['identifier'],
+                        $rootPaletteIdentifier,
+                        $input->contentBlock
+                    );
+                }
                 $fields[] = $paletteField;
                 $paletteItems[] = $this->chooseIdentifier($input, $paletteField);
             }
@@ -593,8 +638,10 @@ final class ContentBlockCompiler
         return true;
     }
 
-    private function resolveFlexFormField(ProcessingInput $input, array $flexFormField): TcaFieldDefinition|SectionDefinition
-    {
+    private function resolveFlexFormField(
+        ProcessingInput $input,
+        array $flexFormField
+    ): TcaFieldDefinition|SectionDefinition {
         if (FlexFormSubType::tryFrom($flexFormField['type']) === FlexFormSubType::SECTION) {
             return $this->processFlexFormSection($input, $flexFormField);
         }
@@ -615,7 +662,7 @@ final class ContentBlockCompiler
         $flexFormFieldArray = [
             'uniqueIdentifier' => $identifier,
             'config' => $flexFormField,
-            'type' => FieldType::from($flexFormField['type']),
+            'type' => $this->fieldTypeRegistry->get($flexFormField['type']),
             'labelPath' => $labelPath,
             'descriptionPath' => $descriptionPath,
         ];
@@ -693,8 +740,12 @@ final class ContentBlockCompiler
                     );
                 }
             }
-            if ($sortFieldIdentifier !== '' && in_array($sortFieldIdentifier, $result->uniqueFieldIdentifiers, true)) {
-                $result->tableDefinition->raw['sortField'][$i]['identifier'] = $result->identifierToUniqueMap[$sortFieldIdentifier];
+            if (
+                $sortFieldIdentifier !== ''
+                && in_array($sortFieldIdentifier, $result->uniqueFieldIdentifiers, true)
+            ) {
+                $uniqueIdentifier = $result->identifierToUniqueMap[$sortFieldIdentifier];
+                $result->tableDefinition->raw['sortField'][$i]['identifier'] = $uniqueIdentifier;
                 $result->tableDefinition->raw['sortField'][$i]['order'] = strtoupper($order);
             }
         }
@@ -719,8 +770,11 @@ final class ContentBlockCompiler
         }
     }
 
-    private function prefixDisplayCondFieldRecursive(string|array $displayCond, array $field, ProcessedFieldsResult $result): string|array
-    {
+    private function prefixDisplayCondFieldRecursive(
+        string|array $displayCond,
+        array $field,
+        ProcessedFieldsResult $result
+    ): string|array {
         if (is_string($displayCond)) {
             $displayCond = $this->prefixDisplayCondRule($displayCond, $result);
         } else {
@@ -774,7 +828,8 @@ final class ContentBlockCompiler
         for ($i = 0; $i < count($fallbackLabelFields); $i++) {
             $currentLabelField = $fallbackLabelFields[$i];
             if (in_array($currentLabelField, $result->uniqueFieldIdentifiers, true)) {
-                $result->tableDefinition->raw['fallbackLabelFields'][$i] = $result->identifierToUniqueMap[$currentLabelField];
+                $labelField = $result->identifierToUniqueMap[$currentLabelField];
+                $result->tableDefinition->raw['fallbackLabelFields'][$i] = $labelField;
             }
         }
     }
@@ -803,7 +858,7 @@ final class ContentBlockCompiler
         return $contentBlock->getPrefixType();
     }
 
-    private function resolveType(ProcessingInput $input, array $field): FieldType
+    private function resolveType(ProcessingInput $input, array $field): FieldTypeInterface
     {
         $isExistingField = $this->isExistingField($field);
         if ($isExistingField) {
@@ -813,23 +868,29 @@ final class ContentBlockCompiler
             if ($this->simpleTcaSchemaFactory->has($input->table)) {
                 $tcaSchema = $this->simpleTcaSchemaFactory->get($input->table);
                 if ($tcaSchema->hasField($identifier)) {
-                    $tcaField = $tcaSchema->getField($identifier);
-                    $fieldType = $tcaField->getType();
-                    return $fieldType;
+                    $fieldType = $tcaSchema->getField($identifier);
+                    return $fieldType->getType();
                 }
             }
         }
         $this->assertTypeExists($field, $input);
-        $fieldType = FieldType::tryFrom($field['type']);
-        if ($fieldType === null) {
-            $validTypesList = array_map(fn(FieldType $fieldType) => $fieldType->value, FieldType::cases());
+        $fieldTypeName = $field['type'];
+        if (!$this->fieldTypeRegistry->has($fieldTypeName)) {
+            $validTypesList = array_map(
+                fn(FieldTypeInterface $fieldType) => $fieldType::getName(),
+                $this->fieldTypeRegistry->getAll()
+            );
+            sort($validTypesList);
             $validTypes = implode(', ', $validTypesList);
             throw new \InvalidArgumentException(
-                'The type "' . $field['type'] . '" is not a valid type in Content Block "' . $input->contentBlock->getName() . '". Valid types are: ' . $validTypes . '.',
+                'The type "' . $field['type'] . '" is not a valid type in Content Block "'
+                . $input->contentBlock->getName() . '". Valid types are: ' . $validTypes . '.',
                 1697625849
             );
         }
-        if ($fieldType !== FieldType::LINEBREAK) {
+        $fieldType = $this->fieldTypeRegistry->get($fieldTypeName);
+        $fieldTypeEnum = FieldType::tryFrom($fieldType::getName());
+        if ($fieldTypeEnum !== FieldType::LINEBREAK) {
             $this->assertIdentifierExists($field, $input);
         }
         return $fieldType;
@@ -845,7 +906,11 @@ final class ContentBlockCompiler
             return $field['identifier'];
         }
         $prefixType = $this->getPrefixType($input->contentBlock, $field);
-        $uniqueIdentifier = UniqueIdentifierCreator::prefixIdentifier($input->contentBlock, $prefixType, $field['identifier']);
+        $uniqueIdentifier = UniqueIdentifierCreator::prefixIdentifier(
+            $input->contentBlock,
+            $prefixType,
+            $field['identifier']
+        );
         return $uniqueIdentifier;
     }
 
@@ -861,7 +926,8 @@ final class ContentBlockCompiler
     {
         if ($fieldType === FieldType::LINEBREAK) {
             throw new \InvalidArgumentException(
-                'Linebreaks are only allowed within Palettes in Content Block "' . $contentBlock->getName() . '".',
+                'Linebreaks are only allowed within Palettes in Content Block "'
+                . $contentBlock->getName() . '".',
                 1679224392
             );
         }
@@ -871,7 +937,8 @@ final class ContentBlockCompiler
     {
         if (!isset($field['identifier'])) {
             throw new \InvalidArgumentException(
-                'A field is missing the required "identifier" in Content Block "' . $input->contentBlock->getName() . '".',
+                'A field is missing the required "identifier" in Content Block "'
+                . $input->contentBlock->getName() . '".',
                 1679226075
             );
         }
@@ -881,47 +948,67 @@ final class ContentBlockCompiler
     {
         if (!isset($field['type'])) {
             throw new \InvalidArgumentException(
-                'The field "' . ($field['identifier'] ?? '') . '" is missing the required "type" in Content Block "' . $input->contentBlock->getName() . '".',
+                'The field "' . ($field['identifier'] ?? '')
+                . '" is missing the required "type" in Content Block "'
+                . $input->contentBlock->getName() . '".',
                 1694768937
             );
         }
     }
 
-    private function assertUniquePaletteIdentifier(string $identifier, ProcessedFieldsResult $result, LoadedContentBlock $contentBlock): void
-    {
+    private function assertUniquePaletteIdentifier(
+        string $identifier,
+        ProcessedFieldsResult $result,
+        LoadedContentBlock $contentBlock
+    ): void {
         if (in_array($identifier, $result->uniquePaletteIdentifiers, true)) {
             throw new \InvalidArgumentException(
-                'The palette identifier "' . $identifier . '" in Content Block "' . $contentBlock->getName() . '" does exist more than once. Please choose unique identifiers.',
+                'The palette identifier "' . $identifier . '" in Content Block "' . $contentBlock->getName()
+                . '" does exist more than once. Please choose unique identifiers.',
                 1679168022
             );
         }
     }
 
-    private function assertNoPaletteInPalette(FieldType $fieldType, string $identifier, string $rootFieldIdentifier, LoadedContentBlock $contentBlock): void
-    {
+    private function assertNoPaletteInPalette(
+        FieldType $fieldType,
+        string $identifier,
+        string $rootFieldIdentifier,
+        LoadedContentBlock $contentBlock
+    ): void {
         if ($fieldType === FieldType::PALETTE) {
             throw new \InvalidArgumentException(
-                'Palette "' . $identifier . '" is not allowed inside palette "' . $rootFieldIdentifier . '" in Content Block "' . $contentBlock->getName() . '".',
+                'Palette "' . $identifier . '" is not allowed inside palette "' . $rootFieldIdentifier
+                . '" in Content Block "' . $contentBlock->getName() . '".',
                 1679168602
             );
         }
     }
 
-    private function assertNoTabInPalette(FieldType $fieldType, string $identifier, string $rootFieldIdentifier, LoadedContentBlock $contentBlock): void
-    {
+    private function assertNoTabInPalette(
+        FieldType $fieldType,
+        string $identifier,
+        string $rootFieldIdentifier,
+        LoadedContentBlock $contentBlock
+    ): void {
         if ($fieldType === FieldType::TAB) {
             throw new \InvalidArgumentException(
-                'Tab "' . $identifier . '" is not allowed inside palette "' . $rootFieldIdentifier . '" in Content Block "' . $contentBlock->getName() . '".',
+                'Tab "' . $identifier . '" is not allowed inside palette "' . $rootFieldIdentifier
+                . '" in Content Block "' . $contentBlock->getName() . '".',
                 1679245193
             );
         }
     }
 
-    private function assertUniqueTabIdentifier(string $identifier, ProcessedFieldsResult $result, LoadedContentBlock $contentBlock): void
-    {
+    private function assertUniqueTabIdentifier(
+        string $identifier,
+        ProcessedFieldsResult $result,
+        LoadedContentBlock $contentBlock
+    ): void {
         if (in_array($identifier, $result->uniqueTabIdentifiers, true)) {
             throw new \InvalidArgumentException(
-                'The tab identifier "' . $identifier . '" in Content Block "' . $contentBlock->getName() . '" does exist more than once. Please choose unique identifiers.',
+                'The tab identifier "' . $identifier . '" in Content Block "' . $contentBlock->getName()
+                . '" does exist more than once. Please choose unique identifiers.',
                 1679243686
             );
         }
@@ -931,7 +1018,8 @@ final class ContentBlockCompiler
     {
         if (in_array($result->identifier, $result->uniqueFieldIdentifiers, true)) {
             throw new \InvalidArgumentException(
-                'The identifier "' . $result->identifier . '" in Content Block "' . $contentBlock->getName() . '" does exist more than once. Please choose unique identifiers.',
+                'The identifier "' . $result->identifier . '" in Content Block "' . $contentBlock->getName()
+                . '" does exist more than once. Please choose unique identifiers.',
                 1677407942
             );
         }
@@ -948,7 +1036,8 @@ final class ContentBlockCompiler
             $isValid = $currentType === $flexFormType;
             if (!$isValid) {
                 throw new \InvalidArgumentException(
-                    'You must not mix Sheets with normal fields inside the FlexForm definition "' . $field['identifier'] . '" in Content Block "' . $contentBlock->getName() . '".',
+                    'You must not mix Sheets with normal fields inside the FlexForm definition "'
+                    . $field['identifier'] . '" in Content Block "' . $contentBlock->getName() . '".',
                     1685217163
                 );
             }
@@ -966,22 +1055,30 @@ final class ContentBlockCompiler
             if (FlexFormSubType::tryFrom($flexField['type']) === FlexFormSubType::SECTION) {
                 if (empty($flexField['container'])) {
                     throw new \InvalidArgumentException(
-                        'FlexForm field "' . $field['identifier'] . '" has a Section "' . $flexField['identifier'] . '" without "container" defined. This is invalid, please add at least one item to "container" in Content Block "' . $contentBlock->getName() . '".',
+                        'FlexForm field "' . $field['identifier'] . '" has a Section "'
+                        . $flexField['identifier'] . '" without "container" defined. This is invalid, please add at'
+                        . ' least one item to "container" in Content Block "' . $contentBlock->getName() . '".',
                         1686330220
                     );
                 }
                 foreach ($flexField['container'] as $container) {
                     if (empty($container['fields'])) {
                         throw new \InvalidArgumentException(
-                            'FlexForm field "' . $field['identifier'] . '" has a Container in Section "' . $flexField['identifier'] . '" without "fields" defined. This is invalid, please add at least one field to "fields" in Content Block "' . $contentBlock->getName() . '".',
+                            'FlexForm field "' . $field['identifier'] . '" has a Container in Section "'
+                            . $flexField['identifier'] . '" without "fields" defined. This is invalid, please add at'
+                            . ' least one field to "fields" in Content Block "' . $contentBlock->getName() . '".',
                             1686331469
                         );
                     }
                     foreach ($container['fields'] as $containerField) {
-                        $containerType = FieldType::from($containerField['type']);
-                        if (!FieldType::isValidFlexFormField($containerType)) {
+                        if (
+                            !$this->fieldTypeRegistry->has($containerField['type'])
+                            || !FieldType::isValidFlexFormField($this->fieldTypeRegistry->get($containerField['type']))
+                        ) {
                             throw new \InvalidArgumentException(
-                                'FlexForm field "' . $field['identifier'] . '" has an invalid field of type "' . $containerType->value . '" inside of a "container" item. Please use valid field types in Content Block "' . $contentBlock->getName() . '".',
+                                'FlexForm field "' . $field['identifier'] . '" has an invalid field of type "'
+                                . $containerField['type'] . '" inside of a "container" item. Please use valid field'
+                                . ' types in Content Block "' . $contentBlock->getName() . '".',
                                 1686330594
                             );
                         }
@@ -989,10 +1086,13 @@ final class ContentBlockCompiler
                 }
                 continue;
             }
-            $type = FieldType::from($flexField['type']);
-            if (!FieldType::isValidFlexFormField($type)) {
+            if (
+                !$this->fieldTypeRegistry->has($flexField['type'])
+                || !FieldType::isValidFlexFormField($this->fieldTypeRegistry->get($flexField['type']))
+            ) {
                 throw new \InvalidArgumentException(
-                    'Field type "' . $type->value . '" with identifier "' . $flexField['identifier'] . '" is not allowed inside FlexForm in Content Block "' . $contentBlock->getName() . '".',
+                    'Field type "' . $flexField['type'] . '" with identifier "' . $flexField['identifier']
+                    . '" is not allowed inside FlexForm in Content Block "' . $contentBlock->getName() . '".',
                     1685220309
                 );
             }

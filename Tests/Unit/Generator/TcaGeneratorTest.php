@@ -26,7 +26,9 @@ use TYPO3\CMS\ContentBlocks\Generator\FlexFormGenerator;
 use TYPO3\CMS\ContentBlocks\Generator\TcaGenerator;
 use TYPO3\CMS\ContentBlocks\Loader\LoadedContentBlock;
 use TYPO3\CMS\ContentBlocks\Registry\ContentBlockRegistry;
+use TYPO3\CMS\ContentBlocks\Schema\FieldTypeResolver;
 use TYPO3\CMS\ContentBlocks\Schema\SimpleTcaSchemaFactory;
+use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\FieldTypeRegistryTestFactory;
 use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\NoopLanguageFileRegistry;
 use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\TestSystemExtensionAvailability;
 use TYPO3\CMS\Core\Cache\Frontend\NullFrontend;
@@ -44,11 +46,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'fields' => [
                             [
                                 'identifier' => 'bodytext',
@@ -219,11 +225,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/testblock',
                     'extPath' => 'EXT:foo/ContentBlocks/testblock',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_testblock',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_testblock',
                         'fields' => [
                             [
                                 'identifier' => 'bodytext',
@@ -468,6 +478,7 @@ final class TcaGeneratorTest extends UnitTestCase
                                 'foreign_table_field' => 'tablenames',
                                 'foreign_match_fields' => [
                                     'fieldname' => 't3ce_example_file',
+                                    'tablenames' => 'tt_content',
                                 ],
                                 'foreign_label' => 'uid_local',
                                 'foreign_selector' => 'uid_local',
@@ -967,11 +978,16 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'fields' => [
                             [
                                 'identifier' => 'tab_1',
@@ -1024,11 +1040,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'fields' => [
                             [
                                 'identifier' => 'tab_1',
@@ -1061,8 +1081,11 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/RecordTypes/example',
-                    'icon' => 'EXT:foo/ContentBlocks/RecordTypes/example/Assets/Icon.svg',
-                    'iconProvider' => SvgIconProvider::class,
+                    'icon' => [
+                        'iconPath' => 'EXT:foo/ContentBlocks/RecordTypes/example/Assets/Icon.svg',
+                        'iconProvider' => SvgIconProvider::class,
+                        'iconIdentifier' => 'foobar-1',
+                    ],
                     'yaml' => [
                         'table' => 'foobar',
                         'fields' => [
@@ -1237,8 +1260,11 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'foobar-1',
+                    ],
                     'yaml' => [
                         'table' => 'foobar',
                         'labelField' => [
@@ -1395,8 +1421,11 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'foobar-1',
+                    ],
                     'yaml' => [
                         'table' => 'foobar',
                         'labelField' => [
@@ -1544,8 +1573,11 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/RecordTypes/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'foobar-example',
+                    ],
                     'yaml' => [
                         'table' => 'foobar',
                         'priority' => 1,
@@ -1563,8 +1595,11 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example2',
                     'extPath' => 'EXT:foo/ContentBlocks/RecordTypes/example2',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'foobar-example2',
+                    ],
                     'yaml' => [
                         'table' => 'foobar',
                         'typeName' => 'example2',
@@ -1787,11 +1822,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'prefixFields' => false,
                         'fields' => [
                             [
@@ -2085,7 +2124,9 @@ final class TcaGeneratorTest extends UnitTestCase
         ];
         $baseTca['tt_content']['ctrl']['searchFields'] = 'header,header_link,subheader,bodytext,pi_flexform';
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($baseTca);
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver, $baseTca);
         $contentBlocks = array_map(fn(array $contentBlock) => LoadedContentBlock::fromArray($contentBlock), $contentBlocks);
         $contentBlockRegistry = new ContentBlockRegistry();
         foreach ($contentBlocks as $contentBlock) {
@@ -2093,7 +2134,7 @@ final class TcaGeneratorTest extends UnitTestCase
         }
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $systemExtensionAvailability = new TestSystemExtensionAvailability();
         $systemExtensionAvailability->addAvailableExtension('workspaces');
         $languageFileRegistry = new NoopLanguageFileRegistry();
@@ -2119,8 +2160,16 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 'content-blocks/custom-page-type',
                     'extPath' => 'EXT:my_sitepackage/ContentBlocks/PageTypes/custom-page-type',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'pages-1700156757',
+                    ],
+                    'iconHideInMenu' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'pages-1700156757-hide-in-menu',
+                    ],
                     'yaml' => [
                         'table' => 'pages',
                         'typeField' => 'doktype',
@@ -2134,6 +2183,7 @@ final class TcaGeneratorTest extends UnitTestCase
                     'ctrl' => [
                         'typeicon_classes' => [
                             '1700156757' => 'pages-1700156757',
+                            '1700156757-hideinmenu' => 'pages-1700156757-hide-in-menu',
                         ],
                         'searchFields' => 'title,slug,nav_title',
                     ],
@@ -2176,8 +2226,11 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 'content-blocks/custom-page-type',
                     'extPath' => 'EXT:my_sitepackage/ContentBlocks/PageTypes/custom-page-type',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'pages-1700156757',
+                    ],
                     'yaml' => [
                         'table' => 'pages',
                         'typeField' => 'doktype',
@@ -2253,7 +2306,9 @@ final class TcaGeneratorTest extends UnitTestCase
             ],
         ];
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($baseTca);
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver, $baseTca);
         $contentBlocks = array_map(fn(array $contentBlock) => LoadedContentBlock::fromArray($contentBlock), $contentBlocks);
         $contentBlockRegistry = new ContentBlockRegistry();
         foreach ($contentBlocks as $contentBlock) {
@@ -2261,7 +2316,7 @@ final class TcaGeneratorTest extends UnitTestCase
         }
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $systemExtensionAvailability = new TestSystemExtensionAvailability();
         $systemExtensionAvailability->addAvailableExtension('workspaces');
         if ($seoExtensionLoaded) {
@@ -2290,19 +2345,23 @@ final class TcaGeneratorTest extends UnitTestCase
         $yaml = [
             'name' => 'test/test',
             'extPath' => 'dummyPath',
-            'icon' => '',
-            'iconProvider' => '',
+            'icon' => [
+                'iconPath' => '',
+                'iconProvider' => '',
+            ],
             'yaml' => [
                 'table' => 'my_custom_table',
             ],
         ];
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory();
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver);
         $contentBlock = LoadedContentBlock::fromArray($yaml);
         $contentBlockRegistry = new ContentBlockRegistry();
         $contentBlockRegistry->register($contentBlock);
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $systemExtensionAvailability = new TestSystemExtensionAvailability();
         $systemExtensionAvailability->addAvailableExtension('workspaces');
         $languageFileRegistry = new NoopLanguageFileRegistry();
@@ -2331,11 +2390,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'fields' => [
                             [
                                 'identifier' => 'flex',
@@ -2358,11 +2421,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/testblock',
                     'extPath' => 'EXT:foo/ContentBlocks/testblock',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_testblock',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_testblock',
                         'fields' => [
                             [
                                 'identifier' => 'flex',
@@ -2501,11 +2568,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'fields' => [
                             [
                                 'identifier' => 'pi_flexform',
@@ -2527,11 +2598,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example2',
                     'extPath' => 'EXT:foo/ContentBlocks/example2',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example2',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example2',
                         'fields' => [
                             [
                                 'identifier' => 'pi_flexform',
@@ -2553,11 +2628,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example3',
                     'extPath' => 'EXT:foo/ContentBlocks/example3',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example3',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example3',
                         'fields' => [
                             [
                                 'identifier' => 'pi_flexform',
@@ -2761,11 +2840,15 @@ final class TcaGeneratorTest extends UnitTestCase
                 [
                     'name' => 't3ce/example',
                     'extPath' => 'EXT:foo/ContentBlocks/example',
-                    'icon' => '',
-                    'iconProvider' => '',
+                    'icon' => [
+                        'iconPath' => '',
+                        'iconProvider' => '',
+                        'iconIdentifier' => 'tt_content-t3ce_example',
+                    ],
                     'yaml' => [
                         'table' => 'tt_content',
                         'typeField' => 'CType',
+                        'typeName' => 't3ce_example',
                         'fields' => [
                             [
                                 'identifier' => 'flex',
@@ -2937,14 +3020,16 @@ final class TcaGeneratorTest extends UnitTestCase
         ];
         $baseTca['tt_content']['ctrl']['searchFields'] = 'header,header_link,subheader,bodytext,pi_flexform';
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($baseTca);
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver, $baseTca);
         $contentBlockRegistry = new ContentBlockRegistry();
         foreach ($contentBlocks as $contentBlock) {
             $contentBlockRegistry->register(LoadedContentBlock::fromArray($contentBlock));
         }
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $systemExtensionAvailability = new TestSystemExtensionAvailability();
         $systemExtensionAvailability->addAvailableExtension('workspaces');
         $languageFileRegistry = new NoopLanguageFileRegistry();
@@ -2991,12 +3076,14 @@ final class TcaGeneratorTest extends UnitTestCase
 
         $expected = 'FIELD:bar_foo_bField:=:aValue';
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($baseTca);
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver, $baseTca);
         $contentBlockRegistry = new ContentBlockRegistry();
         $contentBlockRegistry->register($contentBlock);
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $systemExtensionAvailability = new TestSystemExtensionAvailability();
         $systemExtensionAvailability->addAvailableExtension('workspaces');
         $languageFileRegistry = new NoopLanguageFileRegistry();
@@ -3093,6 +3180,9 @@ final class TcaGeneratorTest extends UnitTestCase
             'name' => 'my-vendor/record2',
             'hostExtension' => 'my_extension',
             'extPath' => 'EXT:my_extension/ContentBlocks/RecordType/record',
+            'icon' => [
+                'iconIdentifier' => 'existing_record-type_2',
+            ],
             'yaml' => [
                 'table' => 'existing_record',
                 'typeName' => 'type_2',
@@ -3212,12 +3302,14 @@ final class TcaGeneratorTest extends UnitTestCase
             ],
         ];
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($baseTca);
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver, $baseTca);
         $contentBlockRegistry = new ContentBlockRegistry();
         $contentBlockRegistry->register($contentBlock);
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $systemExtensionAvailability = new TestSystemExtensionAvailability();
         $languageFileRegistry = new NoopLanguageFileRegistry();
         $flexFormGenerator = new FlexFormGenerator($languageFileRegistry);

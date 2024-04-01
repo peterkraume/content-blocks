@@ -35,8 +35,13 @@ class ContentBlocksDataProcessor implements DataProcessorInterface
         array $processorConfiguration,
         array $processedData
     ): array {
-        $this->relationResolver->setRequest($cObj->getRequest());
+        $request = $cObj->getRequest();
+        $this->relationResolver->setRequest($request);
+        $this->contentBlockDataDecorator->setRequest($request);
         $table = $cObj->getCurrentTable();
+        if (!$this->tableDefinitionCollection->hasTable($table)) {
+            return $processedData;
+        }
         $tableDefinition = $this->tableDefinitionCollection->getTable($table);
         $contentTypeDefinition = ContentTypeResolver::resolve($tableDefinition, $processedData['data']);
         if ($contentTypeDefinition === null) {
@@ -51,9 +56,7 @@ class ContentBlocksDataProcessor implements DataProcessorInterface
         $processedData['data'] = $this->contentBlockDataDecorator->decorate(
             $contentTypeDefinition,
             $tableDefinition,
-            $processedData['data'],
             $resolvedData,
-            $table
         );
         return $processedData;
     }

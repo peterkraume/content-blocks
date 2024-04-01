@@ -13,6 +13,7 @@ Settings
 ========
 
 .. confval:: extendedPalette
+   :name: file-extendedPalette
 
    :Required: false
    :Type: boolean
@@ -25,6 +26,7 @@ Settings
    this option, if you don't need these additional fields.
 
 .. confval:: allowed
+   :name: file-allowed
 
    :Required: false
    :Type: string|array
@@ -34,6 +36,7 @@ Settings
     list of file types.
 
 .. confval:: maxitems
+   :name: file-maxitems
 
    :Required: false
    :Type: integer
@@ -43,6 +46,7 @@ Settings
    validation prevents the record from being saved if the limit is not satisfied.
 
 .. confval:: minitems
+   :name: file-minitems
 
    :Required: false
    :Type: integer
@@ -53,6 +57,7 @@ Settings
    The field can be set as required by setting `minitems` to at least 1.
 
 .. confval:: cropVariants
+   :name: file-cropVariants
 
    :Required: false
    :Type: array
@@ -60,7 +65,7 @@ Settings
 
    It is possible to define crop variants for this specific field and Content
    Block. This documentation only covers the most basic configuration. Refer to
-   the :ref:`TCA documentation <columns-imageManipulation-properties-cropVariants>`
+   the :ref:`TCA documentation <t3tca:columns-imageManipulation-properties-cropVariants>`
    for a complete overview of possibilities.
 
    Example configuration below. The aspect ratios can be defined as a float

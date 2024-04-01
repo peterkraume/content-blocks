@@ -123,6 +123,7 @@ use content types as sub-resources inside extensions.
     Templating/Index
     ReuseExistingFields/Index
     Guides/Index
+    DeveloperCorner/Index
     Migrations/Index
     KnownProblems/Index
     Appendix/Index
@@ -133,4 +134,3 @@ use content types as sub-resources inside extensions.
     :hidden:
 
     Sitemap
-    genindex

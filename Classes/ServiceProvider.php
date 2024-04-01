@@ -22,6 +22,7 @@ use TYPO3\CMS\Backend\View\Event\ModifyDatabaseQueryForContentEvent;
 use TYPO3\CMS\ContentBlocks\Cache\InitializeContentBlockCache;
 use TYPO3\CMS\ContentBlocks\Definition\ContentType\ContentElementDefinition;
 use TYPO3\CMS\ContentBlocks\Definition\ContentType\ContentType;
+use TYPO3\CMS\ContentBlocks\Definition\ContentType\ContentTypeDefinition;
 use TYPO3\CMS\ContentBlocks\Definition\ContentType\PageTypeDefinition;
 use TYPO3\CMS\ContentBlocks\Definition\TableDefinitionCollection;
 use TYPO3\CMS\ContentBlocks\Registry\ContentBlockRegistry;
@@ -104,13 +105,21 @@ class ServiceProvider extends AbstractServiceProvider
         }
         $tableDefinitionCollection = $container->get(TableDefinitionCollection::class);
         foreach ($tableDefinitionCollection as $tableDefinition) {
+            /** @var ContentTypeDefinition $typeDefinition */
             foreach ($tableDefinition->getContentTypeDefinitionCollection() ?? [] as $typeDefinition) {
+                $icon = $typeDefinition->getTypeIcon();
                 $iconConfig = [
-                    $typeDefinition->getTypeIconIdentifier() => [
-                        'source' => $typeDefinition->getTypeIconPath(),
-                        'provider' => $typeDefinition->getIconProviderClassName(),
+                    $icon->iconIdentifier => [
+                        'source' => $icon->iconPath,
+                        'provider' => $icon->iconProvider,
                     ],
                 ];
+                if ($typeDefinition instanceof PageTypeDefinition && $typeDefinition->getTypeIconHideInMenu()->iconIdentifier !== '') {
+                    $hideInMenuIcon = $typeDefinition->getTypeIconHideInMenu();
+                    $iconConfig[$hideInMenuIcon->iconIdentifier] = [
+                        'source' => $hideInMenuIcon->iconPath,
+                    ];
+                }
                 $arrayObject->exchangeArray(array_merge($arrayObject->getArrayCopy(), $iconConfig));
             }
         }
@@ -226,7 +235,7 @@ HEREDOC;
                     }
                     $group = $typeDefinition->getGroup();
                     $typeName = $typeDefinition->getTypeName();
-                    $iconIdentifier = $typeDefinition->getTypeIconIdentifier();
+                    $iconIdentifier = $typeDefinition->getTypeIcon()->iconIdentifier;
                     $saveAndClose = $typeDefinition->hasSaveAndClose() ? '1' : '0';
                     $pageTsConfig = <<<HEREDOC
 mod.wizards.newContentElement.wizardItems.$group {
@@ -269,7 +278,7 @@ HEREDOC;
             $fieldNames = [];
             $contentElementTableDefinition = $tableDefinitionCollection->getTable($contentElementTable);
             foreach ($contentElementTableDefinition->getParentReferences() ?? [] as $parentReference) {
-                $fieldConfiguration = $parentReference->getFieldConfiguration()->getTca()['config'] ?? [];
+                $fieldConfiguration = $parentReference->getTca()['config'] ?? [];
                 if (($fieldConfiguration['foreign_table'] ?? '') === $contentElementTable) {
                     $foreignField = $fieldConfiguration['foreign_field'];
                     $fieldNames[$foreignField] = $foreignField;

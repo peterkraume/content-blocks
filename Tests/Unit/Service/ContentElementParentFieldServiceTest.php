@@ -24,8 +24,10 @@ use TYPO3\CMS\ContentBlocks\Definition\Factory\TableDefinitionCollectionFactory;
 use TYPO3\CMS\ContentBlocks\Definition\TableDefinitionCollection;
 use TYPO3\CMS\ContentBlocks\Loader\LoadedContentBlock;
 use TYPO3\CMS\ContentBlocks\Registry\ContentBlockRegistry;
+use TYPO3\CMS\ContentBlocks\Schema\FieldTypeResolver;
 use TYPO3\CMS\ContentBlocks\Schema\SimpleTcaSchemaFactory;
 use TYPO3\CMS\ContentBlocks\ServiceProvider;
+use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\FieldTypeRegistryTestFactory;
 use TYPO3\CMS\Core\Cache\Frontend\NullFrontend;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
@@ -37,12 +39,15 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
         $contentBlocks = [
             [
                 'name' => 'foo/bar',
-                'icon' => '',
-                'iconProvider' => '',
+                'icon' => [
+                    'iconPath' => '',
+                    'iconProvider' => '',
+                ],
                 'extPath' => 'EXT:example/ContentBlocks/foo',
                 'yaml' => [
                     'table' => 'tt_content',
                     'typeField' => 'CType',
+                    'typeName' => 'foo_bar',
                     'fields' => [
                         [
                             'identifier' => 'nested_content',
@@ -54,12 +59,15 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
             ],
             [
                 'name' => 'foo/baz',
-                'icon' => '',
-                'iconProvider' => '',
+                'icon' => [
+                    'iconPath' => '',
+                    'iconProvider' => '',
+                ],
                 'extPath' => 'EXT:example/ContentBlocks/baz',
                 'yaml' => [
                     'table' => 'foobar',
                     'typeField' => 'CType',
+                    'typeName' => 'foo_baz',
                     'fields' => [
                         [
                             'identifier' => 'nested_content',
@@ -71,12 +79,15 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
             ],
             [
                 'name' => 't3ce/example',
-                'icon' => '',
-                'iconProvider' => '',
+                'icon' => [
+                    'iconPath' => '',
+                    'iconProvider' => '',
+                ],
                 'extPath' => 'EXT:example/ContentBlocks/example',
                 'yaml' => [
                     'table' => 'tt_content',
                     'typeField' => 'CType',
+                    'typeName' => 't3ce_example',
                     'fields' => [
                         [
                             'identifier' => 'nested_content2',
@@ -94,14 +105,16 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
             'alternative_foreign_field',
         ];
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory();
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver);
         $contentBlockRegistry = new ContentBlockRegistry();
         foreach ($contentBlocks as $contentBlock) {
             $contentBlockRegistry->register(LoadedContentBlock::fromArray($contentBlock));
         }
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $container = new Container();
         $container->set(TableDefinitionCollection::class, $tableDefinitionCollection);
         $container->set('cache.content_blocks_code', new NullFrontend('test'));
@@ -116,12 +129,15 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
         $contentBlocks = [
             [
                 'name' => 'foo/bar',
-                'icon' => '',
-                'iconProvider' => '',
+                'icon' => [
+                    'iconPath' => '',
+                    'iconProvider' => '',
+                ],
                 'extPath' => 'EXT:example/ContentBlocks/foo',
                 'yaml' => [
                     'table' => 'foobar',
                     'typeField' => 'CType',
+                    'typeName' => 'foo_bar',
                     'fields' => [
                         [
                             'identifier' => 'nested_content',
@@ -133,12 +149,15 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
             ],
             [
                 'name' => 't3ce/example',
-                'icon' => '',
-                'iconProvider' => '',
+                'icon' => [
+                    'iconPath' => '',
+                    'iconProvider' => '',
+                ],
                 'extPath' => 'EXT:example/ContentBlocks/example',
                 'yaml' => [
                     'table' => 'foobar',
                     'typeField' => 'CType',
+                    'typeName' => 't3ce_example',
                     'fields' => [
                         [
                             'identifier' => 'nested_content2',
@@ -153,14 +172,16 @@ final class ContentElementParentFieldServiceTest extends UnitTestCase
 
         $expected = [];
 
-        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory();
+        $fieldTypeRegistry = FieldTypeRegistryTestFactory::create();
+        $fieldTypeResolver = new FieldTypeResolver($fieldTypeRegistry);
+        $simpleTcaSchemaFactory = new SimpleTcaSchemaFactory($fieldTypeResolver);
         $contentBlockRegistry = new ContentBlockRegistry();
         foreach ($contentBlocks as $contentBlock) {
             $contentBlockRegistry->register(LoadedContentBlock::fromArray($contentBlock));
         }
         $contentBlockCompiler = new ContentBlockCompiler();
         $tableDefinitionCollection = (new TableDefinitionCollectionFactory(new NullFrontend('test'), $contentBlockCompiler))
-            ->createUncached($contentBlockRegistry, $simpleTcaSchemaFactory);
+            ->createUncached($contentBlockRegistry, $fieldTypeRegistry, $simpleTcaSchemaFactory);
         $container = new Container();
         $container->set(TableDefinitionCollection::class, $tableDefinitionCollection);
         $container->set('cache.content_blocks_code', new NullFrontend('test'));

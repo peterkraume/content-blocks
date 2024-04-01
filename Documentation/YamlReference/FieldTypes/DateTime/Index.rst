@@ -14,6 +14,7 @@ Settings
 ========
 
 .. confval:: default
+   :name: datetime-default
 
    :Required: false
    :Type: string
@@ -22,7 +23,18 @@ Settings
    Default value in `Y-m-d` format. Set if a new record is created.
    For example :yaml:`2023-01-01`.
 
+.. confval:: format
+   :name: datetime-format
+
+   :Required: false
+   :Type: string
+   :Default: ''
+
+   Defines how the date should be formatted in the backend. Possible values are
+   `datetime`, `date` or `time` and `timesec`.
+
 .. confval:: dbType
+   :name: datetime-dbType
 
    :Required: false
    :Type: string
@@ -33,6 +45,7 @@ Settings
    or `time` respectively.
 
 .. confval:: range
+   :name: datetime-range
 
    :Required: false
    :Type: array
@@ -55,7 +68,17 @@ Settings
         lower: '2020-01-01'
         upper: '2020-12-31'
 
+.. confval:: disableAgeDisplay
+   :name: datetime-disableAgeDisplay
+
+   :Required: false
+   :Type: boolean
+   :Default: false
+
+   Disable the display of the age in the backend view.
+
 .. confval:: required
+   :name: datetime-required
 
    :Required: false
    :Type: boolean
@@ -77,6 +100,7 @@ Minimal
     fields:
       - identifier: datetime
         type: DateTime
+        format: date
 
 .. code-block:: yaml
 
@@ -84,6 +108,7 @@ Minimal
     fields:
       - identifier: datetime
         type: DateTime
+        format: datetime
         dbType: datetime
 
 Advanced / use case
@@ -95,6 +120,7 @@ Advanced / use case
     fields:
       - identifier: datetime
         type: DateTime
+        format: datetime
         default: '2023-02-11 12:00:00'
         disableAgeDisplay: true
         size: 20

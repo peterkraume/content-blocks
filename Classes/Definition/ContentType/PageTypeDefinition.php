@@ -22,6 +22,8 @@ namespace TYPO3\CMS\ContentBlocks\Definition\ContentType;
  */
 final class PageTypeDefinition extends ContentTypeDefinition implements ContentTypeInterface
 {
+    private ContentTypeIcon $typeIconHideInMenu;
+
     public static function createFromArray(array $array, string $table): PageTypeDefinition
     {
         $self = new self();
@@ -36,11 +38,22 @@ final class PageTypeDefinition extends ContentTypeDefinition implements ContentT
             ->withOverrideColumns($array['overrideColumns'] ?? [])
             ->withVendor($array['vendor'] ?? '')
             ->withPackage($array['package'] ?? '')
-            ->withTypeIconPath($array['typeIconPath'] ?? null)
-            ->withIconProviderClassName($array['iconProvider'] ?? null)
-            ->withTypeIconIdentifier($array['typeIconIdentifier'] ?? null)
+            ->withTypeIcon(ContentTypeIcon::fromArray($array['typeIcon'] ?? []))
+            ->withTypeIconHideInMenu(ContentTypeIcon::fromArray($array['typeIconHideInMenu'] ?? []))
             ->withPriority($array['priority'] ?? 0)
             ->withLanguagePathTitle($array['languagePathTitle'] ?? null)
             ->withLanguagePathDescription($array['languagePathDescription'] ?? null);
+    }
+
+    public function withTypeIconHideInMenu(ContentTypeIcon $typeIconHideInMenu): self
+    {
+        $clone = clone $this;
+        $clone->typeIconHideInMenu = $typeIconHideInMenu;
+        return $clone;
+    }
+
+    public function getTypeIconHideInMenu(): ContentTypeIcon
+    {
+        return $this->typeIconHideInMenu;
     }
 }

@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace TYPO3\CMS\ContentBlocks\Backend\Preview;
 
 use Psr\Http\Message\ServerRequestInterface;
+use Symfony\Component\VarExporter\Exception\NotInstantiableTypeException;
 use Symfony\Component\VarExporter\VarExporter;
 use TYPO3\CMS\Backend\Preview\StandardContentPreviewRenderer;
 use TYPO3\CMS\Backend\View\BackendLayout\Grid\GridColumnItem;
@@ -44,6 +45,7 @@ class PreviewRenderer extends StandardContentPreviewRenderer
         protected ContentBlockRegistry $contentBlockRegistry,
         protected ContentBlockDataDecorator $contentBlockDataDecorator,
         protected PhpFrontend $cache,
+        protected RootPathsSettings $rootPathsSettings,
     ) {}
 
     public function renderPageModulePreviewContent(GridColumnItem $item): string
@@ -66,17 +68,6 @@ class PreviewRenderer extends StandardContentPreviewRenderer
             $result = parent::renderPageModulePreviewContent($item);
             return $result;
         }
-        $view = GeneralUtility::makeInstance(StandaloneView::class);
-        $view->setLayoutRootPaths([$contentBlockPrivatePath . '/Layouts']);
-        $view->setPartialRootPaths([
-            'EXT:backend/Resources/Private/Partials/',
-            'EXT:content_blocks/Resources/Private/Partials/',
-            $contentBlockPrivatePath . '/Partials/',
-        ]);
-        $view->setTemplateRootPaths([$contentBlockPrivatePath]);
-        $view->setTemplate(ContentBlockPathUtility::getBackendPreviewFileNameWithoutExtension());
-        $view->setRequest($request);
-
         $contentElementTableDefinition = $this->tableDefinitionCollection->getTable($contentElementTable);
         if ($this->cache->has($cacheIdentifier)) {
             $resolvedData = $this->cache->require($cacheIdentifier);
@@ -88,22 +79,68 @@ class PreviewRenderer extends StandardContentPreviewRenderer
                 $record,
                 $contentElementTable,
             );
-            // Avoid flooding cache with useless data.
-            if ($resolvedData !== $record) {
-                $exported = 'return ' . VarExporter::export($resolvedData) . ';';
-                $this->cache->set($cacheIdentifier, $exported);
+            // Avoid flooding cache with redundant data.
+            if ($resolvedData->resolved !== $record) {
+                try {
+                    $exported = 'return ' . VarExporter::export($resolvedData) . ';';
+                    $this->cache->set($cacheIdentifier, $exported, ['content_blocks_preview'], 0);
+                } catch (NotInstantiableTypeException) {
+                    // @todo objects of class TYPO3\CMS\Core\Resource\File can't be exported
+                    // @todo due to attached storage, which itself has EventDispatcher attached
+                    // @todo which eventually leads to illegal Closures for EventListeners.
+                    // @todo Right now, this happens for relations of type "folder".
+                }
             }
         }
         $data = $this->contentBlockDataDecorator->decorate(
             $contentElementDefinition,
             $contentElementTableDefinition,
-            $record,
             $resolvedData,
-            $contentElementTable,
             $item->getContext(),
         );
+        $view = $this->createView($contentBlockPrivatePath, $request, $item);
         $view->assign('data', $data);
-        $result = $view->render();
+        $result = (string)$view->render();
         return $result;
+    }
+
+    protected function createView(
+        string $contentBlockPrivatePath,
+        ServerRequestInterface $request,
+        GridColumnItem $item
+    ): StandaloneView {
+        $pageUid = $item->getContext()->getPageId();
+        $view = GeneralUtility::makeInstance(StandaloneView::class);
+        $view->setLayoutRootPaths($this->getContentBlocksLayoutRootPaths($contentBlockPrivatePath, $pageUid));
+        $view->setPartialRootPaths($this->getContentBlocksPartialRootPaths($contentBlockPrivatePath, $pageUid));
+        $view->setTemplateRootPaths([$contentBlockPrivatePath]);
+        $view->setTemplate(ContentBlockPathUtility::getBackendPreviewFileNameWithoutExtension());
+        $view->setRequest($request);
+        return $view;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function getContentBlocksPartialRootPaths(string $contentBlockPrivatePath, int $pageUid): array
+    {
+        $contentBlockPartialRootPaths = $this->rootPathsSettings->getContentBlocksPartialRootPaths($pageUid);
+        $partialRootPaths = [
+            'EXT:backend/Resources/Private/Partials/',
+            'EXT:content_blocks/Resources/Private/Partials/',
+            ...$contentBlockPartialRootPaths,
+            $contentBlockPrivatePath . '/Partials/',
+        ];
+        return $partialRootPaths;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function getContentBlocksLayoutRootPaths(string $contentBlockPrivatePath, int $pageUid): array
+    {
+        $layoutRootPaths = $this->rootPathsSettings->getContentBlocksLayoutRootPaths($pageUid);
+        $layoutRootPaths[] = $contentBlockPrivatePath . '/Layouts/';
+        return $layoutRootPaths;
     }
 }

@@ -23,8 +23,9 @@ use Symfony\Component\VarExporter\LazyObjectInterface;
 use Symfony\Component\Yaml\Yaml;
 use TYPO3\CMS\ContentBlocks\Basics\BasicsService;
 use TYPO3\CMS\ContentBlocks\Definition\ContentType\ContentType;
+use TYPO3\CMS\ContentBlocks\Definition\ContentType\ContentTypeIcon;
+use TYPO3\CMS\ContentBlocks\Definition\Factory\UniqueIdentifierCreator;
 use TYPO3\CMS\ContentBlocks\Registry\ContentBlockRegistry;
-use TYPO3\CMS\ContentBlocks\Service\ContentTypeIconResolver;
 use TYPO3\CMS\ContentBlocks\Utility\ContentBlockPathUtility;
 use TYPO3\CMS\ContentBlocks\Validation\ContentBlockNameValidator;
 use TYPO3\CMS\ContentBlocks\Validation\PageTypeNameValidator;
@@ -60,10 +61,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  * package part separated by a slash. The name parts must be lowercase and can
  * be separated by dashes.
  *
- * @todo Asset publishing of the `Assets` folder happens during the runtime, as
- * @todo opposed to the publishing of the extensions' Resources/Public folder in
- * @todo the composer installation phase. This is not optimal.
- *
  * @internal Not part of TYPO3's public API.
  */
 class ContentBlockLoader
@@ -74,6 +71,7 @@ class ContentBlockLoader
         protected readonly LazyObjectInterface|PhpFrontend $cache,
         protected readonly BasicsService $basicsService,
         protected readonly PackageManager $packageManager,
+        protected readonly IconProcessor $iconProcessor,
     ) {}
 
     public function load(): ContentBlockRegistry
@@ -115,6 +113,7 @@ class ContentBlockLoader
         $contentBlockRegistry = $this->fillContentBlockRegistry($loadedContentBlocks);
 
         $this->publishAssets($loadedContentBlocks);
+        $this->iconProcessor->process();
 
         return $contentBlockRegistry;
     }
@@ -151,7 +150,7 @@ class ContentBlockLoader
             $absoluteContentBlockPath = $splFileInfo->getPathname();
             $contentBlockFolderName = $splFileInfo->getRelativePathname();
             $contentBlockExtPath = ContentBlockPathUtility::getContentBlockExtPath($extensionKey, $contentBlockFolderName, $contentType);
-            $editorInterfaceYaml = $this->parseEditorInterfaceYaml($absoluteContentBlockPath, $contentType);
+            $editorInterfaceYaml = $this->parseEditorInterfaceYaml($absoluteContentBlockPath, $contentBlockExtPath, $contentType);
             $result[] = $this->loadSingleContentBlock(
                 $editorInterfaceYaml['name'],
                 $contentType,
@@ -164,9 +163,16 @@ class ContentBlockLoader
         return $result;
     }
 
-    protected function parseEditorInterfaceYaml(string $absoluteContentBlockPath, mixed $contentType): array
+    protected function parseEditorInterfaceYaml(string $absoluteContentBlockPath, string $contentBlockExtPath, ContentType $contentType): array
     {
-        $yamlPath = $absoluteContentBlockPath . '/' . ContentBlockPathUtility::getContentBlockDefinitionFileName();
+        $contentBlockDefinitionFileName = ContentBlockPathUtility::getContentBlockDefinitionFileName();
+        $yamlPath = $absoluteContentBlockPath . '/' . $contentBlockDefinitionFileName;
+        if (!file_exists($yamlPath)) {
+            throw new \RuntimeException(
+                'Found Content Block folder in "' . $contentBlockExtPath . '" but ' . $contentBlockDefinitionFileName . ' is missing.',
+                1711039210
+            );
+        }
         $editorInterfaceYaml = Yaml::parseFile($yamlPath);
         if (!is_array($editorInterfaceYaml) || strlen($editorInterfaceYaml['name'] ?? '') < 3 || !str_contains($editorInterfaceYaml['name'], '/')) {
             throw new \RuntimeException(
@@ -210,22 +216,48 @@ class ContentBlockLoader
         if (!file_exists($absolutePath)) {
             throw new \RuntimeException('Content Block "' . $name . '" could not be found in "' . $absolutePath . '".', 1678699637);
         }
-
         // Override table and typeField for Content Elements and Page Types.
         if ($contentType === ContentType::CONTENT_ELEMENT || $contentType === ContentType::PAGE_TYPE) {
             $yaml['table'] = $contentType->getTable();
             $yaml['typeField'] = $contentType->getTypeField();
         }
-
+        // Create typeName
+        $typeName = $yaml['typeName'] ?? UniqueIdentifierCreator::createContentTypeIdentifier($name);
+        $yaml['typeName'] ??= $typeName;
+        $table = $yaml['table'];
         $yaml = $this->basicsService->applyBasics($yaml);
         $iconIdentifier = ContentBlockPathUtility::getIconNameWithoutFileExtension();
-        $contentBlockIcon = ContentTypeIconResolver::resolve($name, $absolutePath, $extPath, $iconIdentifier, $contentType);
-
+        $contentBlockIcon = new ContentTypeIcon();
+        $this->iconProcessor->addInstruction(
+            $contentBlockIcon,
+            $name,
+            $absolutePath,
+            $extPath,
+            $iconIdentifier,
+            $contentType,
+            $table,
+            $typeName
+        );
+        $pageIconHideInMenu = new ContentTypeIcon();
+        if ($contentType === ContentType::PAGE_TYPE) {
+            $iconIdentifierHideInMenu = ContentBlockPathUtility::getIconHideInMenuNameWithoutFileExtension();
+            $this->iconProcessor->addInstruction(
+                $pageIconHideInMenu,
+                $name,
+                $absolutePath,
+                $extPath,
+                $iconIdentifierHideInMenu,
+                $contentType,
+                $table,
+                $typeName,
+                '-hide-in-menu'
+            );
+        }
         return new LoadedContentBlock(
             name: $name,
             yaml: $yaml,
-            icon: $contentBlockIcon->iconPath,
-            iconProvider: $contentBlockIcon->iconProvider,
+            icon: $contentBlockIcon,
+            iconHideInMenu: $pageIconHideInMenu,
             hostExtension: $extensionKey,
             extPath: $extPath,
             contentType: $contentType,

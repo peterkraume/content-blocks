@@ -46,12 +46,18 @@ Common field options
 Field options, which can be defined inside the :yaml:`fields` array.
 
 .. confval:: identifier
+   :name: field-types-identifier
 
    :Required: true
    :Type: string
 
    The field's identifier has to be unique within a Content Block. Exception is
    within a collections' field array, as this starts a new scope.
+
+   .. warning::
+
+      Avoid using dashes "-" inside your identifiers. They are not guaranteed to
+      be escaped in the database. We recommend to always use snake case.
 
    .. code-block:: yaml
 
@@ -60,6 +66,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
            type: Text
 
 .. confval:: type
+   :name: field-types-type
 
    :Required: true
    :Type: string
@@ -73,6 +80,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
            type: Text
 
 .. confval:: label
+   :name: field-types-label
 
    :Required: false
    :Type: string
@@ -89,6 +97,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
            label: Static label
 
 .. confval:: description
+   :name: field-types-description
 
    :Required: false
    :Type: string
@@ -103,6 +112,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
            description: Static description
 
 .. confval:: useExistingField
+   :name: field-types-useExistingField
 
    :Required: false
    :Type: bool
@@ -118,13 +128,14 @@ Field options, which can be defined inside the :yaml:`fields` array.
            useExistingField: true
 
 .. confval:: prefixField
+   :name: field-types-prefixField
 
    :Required: false
    :Type: boolean
    :Default: true
 
    If set to false, the prefixing is disabled for this field. This overrules the
-   global option :ref:`prefixFields <yaml_reference_prefixFields>`.
+   global option :confval:`prefixFields <root-prefixFields>`.
 
    .. code-block:: yaml
 
@@ -134,6 +145,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
            prefixField: false
 
 .. confval:: prefixType
+   :name: field-types-prefixType
 
    :Required: false
    :Type: string
@@ -152,6 +164,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
            prefixType: vendor
 
 .. confval:: displayCond
+   :name: field-types-displayCond
 
    :Required: false
    :Type: string|array
@@ -180,6 +193,7 @@ Field options, which can be defined inside the :yaml:`fields` array.
       set to :yaml:`reload`.
 
 .. confval:: onChange
+   :name: field-types-onChange
 
    :Required: false
    :Type: string

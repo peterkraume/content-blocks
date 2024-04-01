@@ -20,6 +20,7 @@ namespace TYPO3\CMS\ContentBlocks\Builder;
 use Symfony\Component\Yaml\Yaml;
 use TYPO3\CMS\ContentBlocks\Definition\ContentType\ContentType;
 use TYPO3\CMS\ContentBlocks\Definition\Factory\TableDefinitionCollectionFactory;
+use TYPO3\CMS\ContentBlocks\FieldType\FieldTypeRegistry;
 use TYPO3\CMS\ContentBlocks\Generator\HtmlTemplateCodeGenerator;
 use TYPO3\CMS\ContentBlocks\Generator\LanguageFileGenerator;
 use TYPO3\CMS\ContentBlocks\Loader\LoadedContentBlock;
@@ -38,6 +39,7 @@ class ContentBlockBuilder
         protected readonly HtmlTemplateCodeGenerator $htmlTemplateCodeGenerator,
         protected readonly LanguageFileGenerator $languageFileGenerator,
         protected readonly ContentBlockRegistry $contentBlockRegistry,
+        protected readonly FieldTypeRegistry $fieldTypeRegistry,
         protected readonly TableDefinitionCollectionFactory $tableDefinitionCollectionFactory,
         protected readonly SimpleTcaSchemaFactory $simpleTcaSchemaFactory,
     ) {}
@@ -77,6 +79,10 @@ class ContentBlockBuilder
             $this->createExamplePublicAssets($publicPath);
         }
         $this->copyDefaultIcon($contentType, $basePath);
+        if ($contentType === ContentType::PAGE_TYPE) {
+            $this->copyHideInMenuIcon($basePath);
+            $this->createBackendPreviewHtml($contentBlock, $basePath);
+        }
     }
 
     protected function initializeRegistries(LoadedContentBlock $contentBlock): void
@@ -84,6 +90,7 @@ class ContentBlockBuilder
         $this->contentBlockRegistry->register($contentBlock);
         $tableDefinitionCollection = $this->tableDefinitionCollectionFactory->createUncached(
             $this->contentBlockRegistry,
+            $this->fieldTypeRegistry,
             $this->simpleTcaSchemaFactory,
         );
         $automaticLanguageKeysRegistry = $tableDefinitionCollection->getAutomaticLanguageKeysRegistry();
@@ -152,5 +159,13 @@ class ContentBlockBuilder
         $absoluteDefaultIconPath = GeneralUtility::getFileAbsFileName($defaultIcon);
         $contentBlockIconPath = $basePath . '/' . ContentBlockPathUtility::getIconPathWithoutFileExtension() . '.svg';
         copy($absoluteDefaultIconPath, $contentBlockIconPath);
+    }
+
+    protected function copyHideInMenuIcon(string $basePath): void
+    {
+        $hideInMenuIcon = 'EXT:content_blocks/Resources/Public/Icons/DefaultPageTypeIconHideInMenu.svg';
+        $absoluteHideInMenuIconPath = GeneralUtility::getFileAbsFileName($hideInMenuIcon);
+        $contentBlockHideInMenuIconPath = $basePath . '/' . ContentBlockPathUtility::getHideInMenuIconPathWithoutFileExtension() . '.svg';
+        copy($absoluteHideInMenuIconPath, $contentBlockHideInMenuIconPath);
     }
 }

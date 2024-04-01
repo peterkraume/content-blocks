@@ -28,7 +28,7 @@ final class ContentBlockFrontendRenderingTest extends FunctionalTestCase
 
     protected array $coreExtensionsToLoad = [
         'workspaces',
-//        'content_blocks',
+        //        'content_blocks',
     ];
 
     protected array $testExtensionsToLoad = [
@@ -173,6 +173,7 @@ final class ContentBlockFrontendRenderingTest extends FunctionalTestCase
         self::assertStringContainsString('Title Relation: Custom Record 2', $html);
     }
 
+    #[Test]
     public function vendorPrefixedFieldsCanBeAccessedByNormalIdentifier(): void
     {
         $this->importCSVDataSet(__DIR__ . '/Fixtures/DataSet/vendor_prefix.csv');
@@ -204,6 +205,7 @@ final class ContentBlockFrontendRenderingTest extends FunctionalTestCase
         $html = (string)$response->getBody();
 
         self::assertStringContainsString('Child typeName: text', $html);
+        self::assertStringContainsString('child header', $html);
         self::assertStringNotContainsString('has no rendering definition!', $html);
     }
 
@@ -240,5 +242,41 @@ final class ContentBlockFrontendRenderingTest extends FunctionalTestCase
         self::assertStringContainsString('Multi Select: one', $html);
         self::assertStringContainsString('Multi Select: two', $html);
         self::assertStringContainsString('Single Select: three', $html);
+    }
+
+    #[Test]
+    public function circularRelationsResolved(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/DataSet/circular_relation.csv');
+        $this->setUpFrontendRootPage(
+            self::ROOT_PAGE_ID,
+            [
+                'EXT:content_blocks/Tests/Functional/Frontend/Fixtures/frontend.typoscript',
+            ]
+        );
+        $response = $this->executeFrontendSubRequest((new InternalRequest())->withPageId(self::ROOT_PAGE_ID));
+        $html = (string)$response->getBody();
+
+        self::assertStringContainsString('Circular relation uid: 1', $html);
+        self::assertStringContainsString('Circular relation from _grids uid: 1', $html);
+        self::assertStringContainsString('Circular select uid: 1', $html);
+    }
+
+    #[Test]
+    public function categoryRelationResolved(): void
+    {
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/DataSet/categories.csv');
+        $this->setUpFrontendRootPage(
+            self::ROOT_PAGE_ID,
+            [
+                'EXT:content_blocks/Tests/Functional/Frontend/Fixtures/frontend.typoscript',
+            ]
+        );
+        $response = $this->executeFrontendSubRequest((new InternalRequest())->withPageId(self::ROOT_PAGE_ID));
+        $html = (string)$response->getBody();
+
+        self::assertStringContainsString('Category table: sys_category', $html);
+        self::assertStringContainsString('Category 1', $html);
+        self::assertStringContainsString('Category 2', $html);
     }
 }
