@@ -48,6 +48,9 @@ final class FileFieldTypeTest extends UnitTestCase
                 'behaviour' => [
                     'foo' => 'bar',
                 ],
+                'overrideChildTca' => [
+                    'foo' => 'bar',
+                ],
                 'readOnly' => 1,
                 'minitems' => 1,
                 'maxitems' => 1,
@@ -98,7 +101,7 @@ final class FileFieldTypeTest extends UnitTestCase
                 'exclude' => true,
                 'config' => [
                     'type' => 'file',
-                    'allowed' => 'gif,jpg,jpeg,tif,tiff,bmp,pcx,tga,png,pdf,ai,svg',
+                    'allowed' => 'common-image-types',
                     'disallowed' => 'png',
                     'appearance' => [
                         'foo' => 'bar',
@@ -110,6 +113,7 @@ final class FileFieldTypeTest extends UnitTestCase
                     'minitems' => 1,
                     'maxitems' => 1,
                     'overrideChildTca' => [
+                        'foo' => 'bar',
                         'columns' => [
                             'crop' => [
                                 'config' => [
@@ -174,6 +178,7 @@ final class FileFieldTypeTest extends UnitTestCase
                 'minitems' => 0,
                 'maxitems' => 0,
                 'cropVariants' => [],
+                'overrideChildTca' => [],
             ],
             'expectedTca' => [
                 'config' => [
@@ -191,22 +196,6 @@ final class FileFieldTypeTest extends UnitTestCase
                             ],
                         ],
                     ],
-                ],
-            ],
-        ];
-
-        yield 'allowed and disallowed accept arrays' => [
-            'config' => [
-                'non_available_field' => 'foo',
-                'allowed' => ['common-image-types'],
-                'disallowed' => ['png'],
-            ],
-            'expectedTca' => [
-                'exclude' => true,
-                'config' => [
-                    'type' => 'file',
-                    'allowed' => 'gif,jpg,jpeg,tif,tiff,bmp,pcx,tga,png,pdf,ai,svg',
-                    'disallowed' => ['png'],
                 ],
             ],
         ];

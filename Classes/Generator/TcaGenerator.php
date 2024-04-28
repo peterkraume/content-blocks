@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace TYPO3\CMS\ContentBlocks\Generator;
 
-use Psr\EventDispatcher\EventDispatcherInterface;
 use TYPO3\CMS\ContentBlocks\Backend\Preview\PreviewRenderer;
 use TYPO3\CMS\ContentBlocks\CompatibilityLayer\TcaPreparation;
 use TYPO3\CMS\ContentBlocks\Definition\Capability\NativeTableCapabilityProxy;
@@ -147,9 +146,7 @@ class TcaGenerator
     public function __construct(
         protected readonly TableDefinitionCollection $tableDefinitionCollection,
         protected readonly SimpleTcaSchemaFactory $simpleTcaSchemaFactory,
-        protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly LanguageFileRegistry $languageFileRegistry,
-        protected readonly TcaPreparation $tcaPreparation,
         protected readonly SystemExtensionAvailability $systemExtensionAvailability,
         protected readonly FlexFormGenerator $flexFormGenerator,
     ) {}
@@ -188,7 +185,6 @@ class TcaGenerator
         foreach ($this->tableDefinitionCollection as $tableDefinition) {
             $tca[$tableDefinition->getTable()] = $this->generateTableTca($tableDefinition, $baseTca);
         }
-        $tca = $this->tcaPreparation->prepare($tca);
         return $tca;
     }
 
@@ -364,7 +360,6 @@ class TcaGenerator
 
     protected function processContentElement(ContentTypeInterface $typeDefinition, array $columnsOverrides): array
     {
-        $typeDefinition->getColumns();
         $typeDefinitionArray = [
             'previewRenderer' => PreviewRenderer::class,
             'showitem' => $this->getContentElementStandardShowItem($typeDefinition),

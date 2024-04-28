@@ -32,9 +32,7 @@ use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\FieldTypeRegistryTestFactory;
 use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\NoopLanguageFileRegistry;
 use TYPO3\CMS\ContentBlocks\Tests\Unit\Fixtures\TestSystemExtensionAvailability;
 use TYPO3\CMS\Core\Cache\Frontend\NullFrontend;
-use TYPO3\CMS\Core\EventDispatcher\NoopEventDispatcher;
 use TYPO3\CMS\Core\Imaging\IconProvider\SvgIconProvider;
-use TYPO3\CMS\Core\Preparations\TcaPreparation;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
 final class TcaGeneratorTest extends UnitTestCase
@@ -472,16 +470,6 @@ final class TcaGeneratorTest extends UnitTestCase
                             'label' => 'file',
                             'config' => [
                                 'type' => 'file',
-                                'foreign_table' => 'sys_file_reference',
-                                'foreign_field' => 'uid_foreign',
-                                'foreign_sortby' => 'sorting_foreign',
-                                'foreign_table_field' => 'tablenames',
-                                'foreign_match_fields' => [
-                                    'fieldname' => 't3ce_example_file',
-                                    'tablenames' => 'tt_content',
-                                ],
-                                'foreign_label' => 'uid_local',
-                                'foreign_selector' => 'uid_local',
                             ],
                             'exclude' => true,
                         ],
@@ -489,18 +477,6 @@ final class TcaGeneratorTest extends UnitTestCase
                             'label' => 'category',
                             'config' => [
                                 'type' => 'category',
-                                'foreign_table' => 'sys_category',
-                                'size' => 20,
-                                'foreign_table_where' => ' AND {#sys_category}.{#sys_language_uid} IN (-1, 0)',
-                                'relationship' => 'manyToMany',
-                                'maxitems' => 99999,
-                                'default' => 0,
-                                'MM' => 'sys_category_record_mm',
-                                'MM_opposite_field' => 'items',
-                                'MM_match_fields' => [
-                                    'tablenames' => 'tt_content',
-                                    'fieldname' => 't3ce_example_category',
-                                ],
                             ],
                             'exclude' => true,
                         ],
@@ -953,19 +929,6 @@ final class TcaGeneratorTest extends UnitTestCase
                             'description' => 'LLL:EXT:foo/ContentBlocks/example/Source/Language/Labels.xlf:collection.collection2.text2.description',
                             'config' => [
                                 'type' => 'input',
-                            ],
-                        ],
-                    ],
-                ],
-                'sys_category' => [
-                    'columns' => [
-                        'items' => [
-                            'config' => [
-                                'MM_oppositeUsage' => [
-                                    'tt_content' => [
-                                        't3ce_example_category',
-                                    ],
-                                ],
                             ],
                         ],
                     ],
@@ -2142,9 +2105,7 @@ final class TcaGeneratorTest extends UnitTestCase
         $tcaGenerator = new TcaGenerator(
             $tableDefinitionCollection,
             $simpleTcaSchemaFactory,
-            new NoopEventDispatcher(),
             $languageFileRegistry,
-            new TcaPreparation(),
             $systemExtensionAvailability,
             $flexFormGenerator,
         );
@@ -2327,9 +2288,7 @@ final class TcaGeneratorTest extends UnitTestCase
         $tcaGenerator = new TcaGenerator(
             $tableDefinitionCollection,
             $simpleTcaSchemaFactory,
-            new NoopEventDispatcher(),
             $languageFileRegistry,
-            new TcaPreparation(),
             $systemExtensionAvailability,
             $flexFormGenerator,
         );
@@ -2369,9 +2328,7 @@ final class TcaGeneratorTest extends UnitTestCase
         $tcaGenerator = new TcaGenerator(
             $tableDefinitionCollection,
             $simpleTcaSchemaFactory,
-            new NoopEventDispatcher(),
             $languageFileRegistry,
-            new TcaPreparation(),
             $systemExtensionAvailability,
             $flexFormGenerator,
         );
@@ -3037,9 +2994,7 @@ final class TcaGeneratorTest extends UnitTestCase
         $tcaGenerator = new TcaGenerator(
             $tableDefinitionCollection,
             $simpleTcaSchemaFactory,
-            new NoopEventDispatcher(),
             $languageFileRegistry,
-            new TcaPreparation(),
             $systemExtensionAvailability,
             $flexFormGenerator,
         );
@@ -3091,9 +3046,7 @@ final class TcaGeneratorTest extends UnitTestCase
         $tcaGenerator = new TcaGenerator(
             $tableDefinitionCollection,
             $simpleTcaSchemaFactory,
-            new NoopEventDispatcher(),
             $languageFileRegistry,
-            new TcaPreparation(),
             $systemExtensionAvailability,
             $flexFormGenerator,
         );
@@ -3316,9 +3269,7 @@ final class TcaGeneratorTest extends UnitTestCase
         $tcaGenerator = new TcaGenerator(
             $tableDefinitionCollection,
             $simpleTcaSchemaFactory,
-            new NoopEventDispatcher(),
             $languageFileRegistry,
-            new TcaPreparation(),
             $systemExtensionAvailability,
             $flexFormGenerator,
         );

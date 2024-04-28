@@ -520,7 +520,7 @@ final class ContentBlockCompiler
 
     /**
      * Collect table definitions and Content Types and carry them over to the next stack.
-     * This factory will merge the table definitions and type definitions at the very end.
+     * This compiler will merge the table definitions and type definitions at the very end.
      */
     private function collectDefinitions(ProcessingInput $input, ProcessedFieldsResult $result): void
     {
@@ -543,7 +543,10 @@ final class ContentBlockCompiler
         if ($isExternalCollection || $fields === []) {
             return;
         }
+        // The Collection's title equals the field label.
         $field['title'] = $field['label'];
+        // Anonymous Collections can't have a type field.
+        $field['typeField'] = null;
         $newInput = new ProcessingInput(
             simpleTcaSchemaFactory: $this->simpleTcaSchemaFactory,
             yaml: $field,

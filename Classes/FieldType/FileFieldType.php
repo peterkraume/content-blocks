@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace TYPO3\CMS\ContentBlocks\FieldType;
 
-use TYPO3\CMS\ContentBlocks\CompatibilityLayer\TcaPreparation;
 use TYPO3\CMS\Core\Resource\AbstractFile;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
@@ -35,6 +34,7 @@ final class FileFieldType implements FieldTypeInterface
     private bool $readOnly = false;
     private int $minitems = 0;
     private int $maxitems = 0;
+    private array $overrideChildTca = [];
     private bool $extendedPalette = true;
     private array $cropVariants = [];
 
@@ -70,6 +70,7 @@ final class FileFieldType implements FieldTypeInterface
         $self->readOnly = (bool)($settings['readOnly'] ?? $self->readOnly);
         $self->minitems = (int)($settings['minitems'] ?? $self->minitems);
         $self->maxitems = (int)($settings['maxitems'] ?? $self->maxitems);
+        $self->overrideChildTca = (array)($settings['overrideChildTca'] ?? $self->overrideChildTca);
         $self->extendedPalette = (bool)($settings['extendedPalette'] ?? $self->extendedPalette);
         $self->cropVariants = (array)($settings['cropVariants'] ?? $self->cropVariants);
         return $self;
@@ -80,7 +81,7 @@ final class FileFieldType implements FieldTypeInterface
         $tca = $this->toTca();
         $config['type'] = self::getTcaType();
         if ($this->allowed !== [] && $this->allowed !== '') {
-            $config['allowed'] = TcaPreparation::prepareFileExtensions($this->allowed);
+            $config['allowed'] = $this->allowed;
         }
         if ($this->disallowed !== [] && $this->disallowed !== '') {
             $config['disallowed'] = $this->disallowed;
@@ -100,20 +101,14 @@ final class FileFieldType implements FieldTypeInterface
         if ($this->maxitems > 0) {
             $config['maxitems'] = $this->maxitems;
         }
+        if ($this->overrideChildTca !== []) {
+            $config['overrideChildTca'] = $this->overrideChildTca;
+        }
         if (!$this->extendedPalette) {
-            $config['overrideChildTca'] = [
-                'types' => [
-                    AbstractFile::FILETYPE_IMAGE => [
-                        'showitem' => '--palette--;;basicoverlayPalette,--palette--;;filePalette',
-                    ],
-                    AbstractFile::FILETYPE_AUDIO => [
-                        'showitem' => '--palette--;;basicoverlayPalette,--palette--;;filePalette',
-                    ],
-                    AbstractFile::FILETYPE_VIDEO => [
-                        'showitem' => '--palette--;;basicoverlayPalette,--palette--;;filePalette',
-                    ],
-                ],
-            ];
+            $basicPalette = '--palette--;;basicoverlayPalette,--palette--;;filePalette';
+            $config['overrideChildTca']['types'][AbstractFile::FILETYPE_IMAGE]['showitem'] = $basicPalette;
+            $config['overrideChildTca']['types'][AbstractFile::FILETYPE_AUDIO]['showitem'] = $basicPalette;
+            $config['overrideChildTca']['types'][AbstractFile::FILETYPE_VIDEO]['showitem'] = $basicPalette;
         }
         if ($this->cropVariants !== []) {
             $config['overrideChildTca']['columns']['crop']['config']['cropVariants'] = $this->processCropVariants();
