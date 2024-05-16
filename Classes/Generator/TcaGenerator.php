@@ -225,12 +225,14 @@ class TcaGenerator
                 }
             }
             if ($tableDefinition->getContentType() === ContentType::RECORD_TYPE) {
-                if ($isNewTable) {
+                if ($isNewTable || !isset($baseTca[$tableDefinition->getTable()]['ctrl']['typeicon_classes']['default'])) {
                     $tca['ctrl']['typeicon_classes']['default'] ??= $typeDefinition->getTypeIcon()->iconIdentifier;
                 }
-                $typeIconColumnExists = $isNewTable && isset($baseTca[$tableDefinition->getTable()]['ctrl']['typeicon_column']);
-                if ($tableDefinition->hasTypeField() && !$typeIconColumnExists) {
-                    $tca['ctrl']['typeicon_column'] = $tableDefinition->getTypeField();
+                if ($tableDefinition->hasTypeField()) {
+                    // Ensure "type" is always set when a type field exists. This could be missing when an existing
+                    // record is extended with a new record type.
+                    $tca['ctrl']['type'] ??= $tableDefinition->getTypeField();
+                    $tca['ctrl']['typeicon_column'] ??= $tableDefinition->getTypeField();
                 }
             }
             if ($tableDefinition->getContentType() === ContentType::CONTENT_ELEMENT && $typeDefinition->hasColumn('bodytext')) {
@@ -254,14 +256,13 @@ class TcaGenerator
             $tcaSchema = $this->simpleTcaSchemaFactory->get($tableDefinition->getTable());
             $nativeCapability = new NativeTableCapabilityProxy($tcaSchema);
             $systemPalettes = $this->buildSystemPalettes($nativeCapability);
-            $existingPalettes = $GLOBALS['TCA'][$tableDefinition->getTable()]['palettes'] ?? [];
-            if (!isset($existingPalettes['hidden']) && isset($systemPalettes['hidden'])) {
+            if (isset($systemPalettes['hidden'])) {
                 $palettes['hidden'] = $systemPalettes['hidden'];
             }
-            if (!isset($existingPalettes['access']) && isset($systemPalettes['access'])) {
+            if (isset($systemPalettes['access'])) {
                 $palettes['access'] = $systemPalettes['access'];
             }
-            if (!isset($existingPalettes['language']) && isset($systemPalettes['language'])) {
+            if (isset($systemPalettes['language'])) {
                 $palettes['language'] = $systemPalettes['language'];
             }
         }
@@ -458,6 +459,9 @@ class TcaGenerator
         $tcaFieldDefinition = $tableDefinition->getTcaFieldDefinitionCollection()
             ->getField($overrideColumn->getUniqueIdentifier());
         $foreignTable = $tcaFieldDefinition->getTca()['config']['foreign_table'];
+        if (!$this->tableDefinitionCollection->hasTable($foreignTable)) {
+            return $overrideTca;
+        }
         $foreignTableDefinition = $this->tableDefinitionCollection->getTable($foreignTable);
         if (
             $foreignTableDefinition->getCapability()->isSortable()
@@ -594,8 +598,11 @@ class TcaGenerator
     }
 
     /**
-     * To be compatible with existing flexForm fields, the type field has to be present inside `ds_pointerField`.
+     * To be compatible with existing FlexForm fields, the type field has to be present inside `ds_pointerField`.
      * If this is not the case, the flexForm field cannot be reused.
+     *
+     * An exception is a FlexForm field which only defines `default`. In such a case the whole configuration is
+     * reused. It's not possible to add a custom set of fields.
      *
      * Furthermore, this method handles the adjustment for multiple pointer fields. The most prominent example would be
      * `pi_flexform`, which points to `list_type` and `CType`. Content Blocks only uses CType by default for Content
@@ -618,7 +625,11 @@ class TcaGenerator
      */
     protected function processExistingFlexForm(TcaFieldDefinition $column, TableDefinition $tableDefinition, array $baseTca): ?array
     {
-        $existingDsPointerField = $baseTca[$tableDefinition->getTable()]['columns'][$column->getUniqueIdentifier()]['config']['ds_pointerField'];
+        $baseTcaColumns = $baseTca[$tableDefinition->getTable()]['columns'];
+        $existingDsPointerField = $baseTcaColumns[$column->getUniqueIdentifier()]['config']['ds_pointerField'] ?? null;
+        if ($existingDsPointerField === null) {
+            return null;
+        }
         $existingDsPointerFieldArray = GeneralUtility::trimExplode(',', $existingDsPointerField);
         $dsConfiguration = $column->getTca()['config']['ds'];
         $typeSwitchField = $tableDefinition->getTypeField();
