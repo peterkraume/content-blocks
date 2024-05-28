@@ -118,6 +118,9 @@ class FlexFormGenerator
         if (in_array($tcaFieldType, $itemsFieldTypes, true)) {
             $items = $flexFormTca['config']['items'] ?? [];
             foreach ($items as $index => $item) {
+                if (!isset($item['labelPath'])) {
+                    continue;
+                }
                 $labelPath = $item['labelPath'];
                 unset($flexFormTca['config']['items'][$index]['labelPath']);
                 if (!$this->languageFileRegistry->isset($name, $labelPath)) {
@@ -149,12 +152,10 @@ class FlexFormGenerator
     {
         if ($this->languageFileRegistry->isset($flexFormDefinition->getContentBlockName(), $definition->getLanguagePathLabel())) {
             $label = $definition->getLanguagePathLabel();
+        } elseif ($definition->hasLabel()) {
+            $label = $definition->getLabel();
         } else {
-            if ($definition->hasLabel()) {
-                $label = $definition->getLabel();
-            } else {
-                $label = $definition->getIdentifier();
-            }
+            $label = $definition->getIdentifier();
         }
         return $label;
     }

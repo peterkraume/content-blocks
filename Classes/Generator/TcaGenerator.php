@@ -407,12 +407,10 @@ class TcaGenerator
                 $languagePathLabel = $inputItem->getLanguagePathLabel();
                 if ($this->languageFileRegistry->isset($inputItem->getContentBlockName(), $languagePathLabel)) {
                     $tab .= $languagePathLabel;
+                } elseif ($inputItem->hasLabel()) {
+                    $tab .= $inputItem->getLabel();
                 } else {
-                    if ($inputItem->hasLabel()) {
-                        $tab .= $inputItem->getLabel();
-                    } else {
-                        $tab .= $inputItem->getIdentifier();
-                    }
+                    $tab .= $inputItem->getIdentifier();
                 }
                 $showItem[] = $tab;
             } else {
@@ -586,6 +584,9 @@ class TcaGenerator
         if (in_array($tcaFieldType, $itemsFieldTypes, true)) {
             $items = $column['config']['items'] ?? [];
             foreach ($items as $index => $item) {
+                if (!isset($item['labelPath'])) {
+                    continue;
+                }
                 $labelPath = $item['labelPath'];
                 unset($column['config']['items'][$index]['labelPath']);
                 if (!$this->languageFileRegistry->isset($name, $labelPath)) {
